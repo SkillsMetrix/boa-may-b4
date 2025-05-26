@@ -1,10 +1,37 @@
-userAge= input('Enter Age: ')
-age=int(userAge)
-if(age <0):
-    print('Enter Valid Age')
-elif(age<18):
-    print('Not Allowed to Vote')
-elif(age>=18 and age<79):
-    print('Allowed to vote')
-else:
-    print('Senior Citizen')
+# class
+class Employee:
+    empId=''
+    empName=''
+    empDepartment=''
+
+    # constructor
+    def __init__(self,empId,empName,empDepartment):
+        self.empId=empId
+        self.empName=empName
+        self.empDepartment=empDepartment
+    # convert object to human readable string ,when you print the object
+    def __str__(self):
+        return f"Employee Details: {self.empId} : {self.empName} {self.empDepartment}"
+
+# create Object
+suresh=Employee('e201','Suresh CH', 'Finance')
+parul=Employee('e202','Parul Arora', 'IT')
+# print indivisual values
+# print(f"Employee Details: {suresh.empId} : {suresh.empName} {suresh.empDepartment}")
+# printing Object
+print(f"Employee Details: {suresh}")
+print(f"Employee Details: {parul}")
+
+
+
+""" suresh= Employee()
+suresh.empId='e201'
+suresh.empName='Suresh CH'
+suresh.empDepartment='IT' """
+
+# using constructor
+
+
+
+
+
