@@ -1,0 +1,10 @@
+userAge= input('Enter Age: ')
+age=int(userAge)
+if(age <0):
+    print('Enter Valid Age')
+elif(age<18):
+    print('Not Allowed to Vote')
+elif(age>=18 and age<79):
+    print('Allowed to vote')
+else:
+    print('Senior Citizen')
