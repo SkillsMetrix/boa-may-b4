@@ -4,19 +4,38 @@ from pydantic import BaseModel
 from random import randrange
 # creating object
 app= FastAPI()
-#dummy data
+# array to store the data
 user_data=[]
 
+# schema created
 class User(BaseModel):
     uname:str
     email:str
     city:str
 
+# adding user to array
+@app.post('/adduser')
+def addUser(user:User):
+    #converting incoming data into key and value
+    data= user.model_dump()
+    # generate random value
+    data['id']= randrange(0,10000)
+    #add the data in array
+    user_data.append(data)
+    return {'message': data}
+
+# load the data from array
+@app.get('/loadusers')
+def loadUsers():
+    return {'data':user_data}
+
+# reusable function to perform (search,update and delete)
 def searchUser(id):
     for index,data in enumerate(user_data):
         if data['id'] == id:
-            return data
+            return index
 
+# search the user with ID
 @app.get('/loaduser/{id}')
 def loadUser(id:int):
     post=searchUser(id)
@@ -24,17 +43,31 @@ def loadUser(id:int):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="User With Given ID ,Not Found")
     return {'userdata': post}
 
-@app.get('/loadusers')
-def loadUsers():
-    return {'data':user_data}
+# delete the user with provided ID
+@app.delete('/deleteuser/{id}')
+def loadUser(id:int):
+    post=searchUser(id)
+    if post == None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="User With Given ID ,Not Found")
+    user_data.pop(post)
+    return {'user is deleted': post}
 
-@app.post('/adduser')
-def addUser(user:User):
+# update the user (accept ID and Data to update)
+@app.put('/updateuser/{id}')
+def updateUser(id:int,user:User):
+    indexId= searchUser(id)
+    if indexId == None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="User With Given ID ,Not Found")
+    
+    data=user.model_dump()
+    user_data[indexId]=data
+    return {'User Updated': data}
 
-    data= user.model_dump()
-    data['id']= randrange(0,10000)
-    user_data.append(data)
-    return {'message': data}
+
+
+
+
+
 
 
     
