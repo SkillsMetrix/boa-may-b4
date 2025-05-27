@@ -1,5 +1,5 @@
 # import module
-from fastapi import FastAPI
+from fastapi import FastAPI,status,HTTPException
 from pydantic import BaseModel
 from random import randrange
 # creating object
@@ -20,6 +20,8 @@ def searchUser(id):
 @app.get('/loaduser/{id}')
 def loadUser(id:int):
     post=searchUser(id)
+    if post == None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="User With Given ID ,Not Found")
     return {'userdata': post}
 
 @app.get('/loadusers')
