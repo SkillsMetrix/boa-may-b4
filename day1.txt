@@ -1,6 +1,7 @@
 # import module
 from fastapi import FastAPI
 from pydantic import BaseModel
+from random import randrange
 # creating object
 app= FastAPI()
 #dummy data
@@ -11,6 +12,15 @@ class User(BaseModel):
     email:str
     city:str
 
+def searchUser(id):
+    for index,data in enumerate(user_data):
+        if data['id'] == id:
+            return data
+
+@app.get('/loaduser/{id}')
+def loadUser(id:int):
+    post=searchUser(id)
+    return {'userdata': post}
 
 @app.get('/loadusers')
 def loadUsers():
@@ -20,7 +30,12 @@ def loadUsers():
 def addUser(user:User):
 
     data= user.model_dump()
-    print(data)
+    data['id']= randrange(0,10000)
+    user_data.append(data)
+    return {'message': data}
+
+
+    
 
 
 
