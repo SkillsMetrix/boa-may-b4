@@ -1,21 +1,28 @@
+
+from fastapi import FastAPI
+from . import dml,loaddemo
+app=FastAPI()
+
+app.include_router(dml.router)
+app.include_router(loaddemo.router)
+
+
+
+-------
+
+DML.py
+
 # import module
-from fastapi import FastAPI,status,HTTPException
-from pydantic import BaseModel
+from fastapi import FastAPI,status,HTTPException,APIRouter
+from . import schema
 from random import randrange
 # creating object
-app= FastAPI()
+router= APIRouter(tags=["User DML App"])
 # array to store the data
 user_data=[]
-
-# schema created
-class User(BaseModel):
-    uname:str
-    email:str
-    city:str
-
 # adding user to array
-@app.post('/adduser')
-def addUser(user:User):
+@router.post('/adduser')
+def addUser(user:schema.User):
     #converting incoming data into key and value
     data= user.model_dump()
     # generate random value
@@ -23,9 +30,49 @@ def addUser(user:User):
     #add the data in array
     user_data.append(data)
     return {'message': data}
+# reusable function to perform (search,update and delete)
+def searchUser(id):
+    for index,data in enumerate(user_data):
+        if data['id'] == id:
+            return index
+# delete the user with provided ID
+@router.delete('/deleteuser/{id}')
+def loadUser(id:int):
+    post=searchUser(id)
+    if post == None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="User With Given ID ,Not Found")
+    user_data.pop(post)
+    return {'user is deleted': post}
 
+# update the user (accept ID and Data to update)
+@router.put('/updateuser/{id}')
+def updateUser(id:int,user:schema.User):
+    indexId= searchUser(id)
+    if indexId == None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="User With Given ID ,Not Found")
+    
+    data=user.model_dump()
+    data['id']=id
+    user_data[indexId]=data
+    return {'User Updated': data}
+
+
+------
+
+loaddemo.py
+
+
+
+# import module
+from fastapi import FastAPI,status,HTTPException,APIRouter
+from . import schema
+
+# creating object
+router= APIRouter(tags=["User Loading App"])
+# array to store the data
+user_data=[]
 # load the data from array
-@app.get('/loadusers')
+@router.get('/loadusers')
 def loadUsers():
     return {'data':user_data}
 
@@ -36,32 +83,34 @@ def searchUser(id):
             return index
 
 # search the user with ID
-@app.get('/loaduser/{id}')
+@router.get('/loaduser/{id}')
 def loadUser(id:int):
     post=searchUser(id)
     if post == None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="User With Given ID ,Not Found")
     return {'userdata': post}
 
-# delete the user with provided ID
-@app.delete('/deleteuser/{id}')
-def loadUser(id:int):
-    post=searchUser(id)
-    if post == None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="User With Given ID ,Not Found")
-    user_data.pop(post)
-    return {'user is deleted': post}
 
-# update the user (accept ID and Data to update)
-@app.put('/updateuser/{id}')
-def updateUser(id:int,user:User):
-    indexId= searchUser(id)
-    if indexId == None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="User With Given ID ,Not Found")
+--------
+
+
+from pydantic import BaseModel
+
+# schema created
+class User(BaseModel):
+    uname:str
+    email:str
+    city:str
+
+
+
+
+
+
     
-    data=user.model_dump()
-    user_data[indexId]=data
-    return {'User Updated': data}
+
+
+
 
 
 
