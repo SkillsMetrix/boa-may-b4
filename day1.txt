@@ -1,60 +1,34 @@
-# import module
-from fastapi import FastAPI,status,HTTPException,APIRouter,Depends
-from . import schema,models
-from sqlalchemy.orm import Session
-from .database import engine,get_connection
-from random import randrange
-# creating object
-router= APIRouter(tags=["User DML App"])
-# array to store the data
-user_data=[]
-# adding user to array
 
-@router.post('/adduser')
-def addUser(user:schema.User,db:Session=Depends(get_connection)):
-   
-    postdata= models.UserApp(**user.model_dump())
-    db.add(postdata)
-    db.commit()
-    return {'message': postdata}
+- hosts: web
+  become: true
+  pre_tasks:
+    - name: check the background
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+    - name: Gather OS information
+      setup:
+        gather_subset:
+          - "os_family"
+    - name: OS Family Status
+      debug:
+        msg: "The underlying OS Family is: {{ansible_os_family}}"
+  tasks:
+    - name: Install Apache2 software on remote machine
+      apt:
+        name:
+          - apache2
+        
+        state: latest
+    - name: start apache service
+      service:
+        name: apache2
+        state: started
     
+    - name: check installation status
+      command: systemctl status apache2
+      register: apache_status
     
-# reusable function to perform (search,update and delete)
-def searchUser(id):
-    for index,data in enumerate(user_data):
-        if data['id'] == id:
-            return index
-# delete the user with provided ID
-@router.delete('/deleteuser/{id}')
-def loadUser(id:int):
-    post=searchUser(id)
-    if post == None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="User With Given ID ,Not Found")
-    user_data.pop(post)
-    return {'user is deleted': post}
-
-# update the user (accept ID and Data to update)
-@router.put('/updateuser/{id}')
-def updateUser(id:int,user:schema.User):
-    indexId= searchUser(id)
-    if indexId == None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="User With Given ID ,Not Found")
-    
-    data=user.model_dump()
-    data['id']=id
-    user_data[indexId]=data
-    return {'User Updated': data}
-
-
-
-
-
-
-
-
-    
-
-
-
-
-
+    - name: print the status
+      debug:
+        msg: "{{apache_status.stdout}}"
