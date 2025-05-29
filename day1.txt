@@ -1,56 +1,44 @@
-- name: Install Docker and deploy Fast API
-  hosts: web
-  become: true
+
+- name: vardemo
+  hosts: db
   gather_facts: false
+  become: true
+
   vars:
-    app_dir: /opt/fastapi-docker
-    image_name: fastapi-app
-    container_name: fastapi-container
-    ansible_user: ubuntu
+    username_firstname: 'amit kumar'
+    is_enabled: true
 
+    fruits:
+      - apple
+      - banana
+      - oranges
+    fruits_price:
+      apple: 50
+      banana: 40
+      oranges: 70
+    fruits_basket:
+      - name: john
+        fruits:
+          - apple
+          - oranges
+      - name: sam
+        fruits:
+          - banana
+          - apple
+  
   tasks:
-    - name: update APT cache
-      apt:
-        update_cache: yes
-    - name: install docker
-      apt:
-        name: docker.io
-        state: present
-    - name: ensure docker status up and enabled
-      service:
-        name: docker
-        state: started
-        enabled: true
-    - name: Add Current User to docker group
-      user:
-        name: "{{ansible_user}}"
-        groups: docker
-        append: yes
-
-    - name: create app directory
-      file:
-        path: "{{app_dir}}"
-        state: directory
-        owner: "{{ansible_user}}"
-
-    - name: copy Fast API Code
-      copy:
-        src: ./app/
-        dest: "{{app_dir}}"
-        owner: "{{ansible_user}}"
-        mode: '0755'
-
-    - name: Build Docker File 
-      
-      command: docker build -t {{image_name}} .
-      args:
-        chdir: "{{app_dir}}"
-
-    - name: stop and remove any exiting container
-      shell: |
-        docker rm -f {{container_name}} || true
-
-    - name: run container
-      command: >
-        docker run -d --name {{container_name}}
-        -p 9000:8000 {{image_name}}
+    - name: print String value
+      debug:
+        var: username_firstname
+    - name: print boolean value
+      debug:
+        var: is_enabled
+    - name: print list value
+      debug:
+        var: fruits
+    - name: print index value
+      debug:
+        var: fruits[1]
+    - name: print nested value
+      debug:
+        var: fruits_basket
