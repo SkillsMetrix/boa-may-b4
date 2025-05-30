@@ -1,52 +1,90 @@
-server.modules = (
-        "mod_indexfile",
-        "mod_access",
-        "mod_alias",
-        "mod_redirect",
-)
+- name: Install Docker and deploy Fast API
+  hosts: web
+  become: true
+  gather_facts: false
+  vars:
+    app_dir: /opt/fastapi-docker
+    image_name: fastapi-app
+    container_name: fastapi-container
+    ansible_user: ubuntu
+    exposed_port: 9000
 
-server.document-root        = "/var/www/html"
-server.upload-dirs          = ( "/var/cache/lighttpd/uploads" )
-server.errorlog             = "/var/log/lighttpd/error.log"
-server.pid-file             = "/run/lighttpd.pid"
-server.username             = "www-data"
-server.groupname            = "www-data"
-server.port                 = {{ server_port }}
+  tasks:
+    - name: update APT cache
+      apt:
+        update_cache: yes
+      register: apt_update
+      retries: 3
+      delay: 5
+      until: apt_update is succeeded
+      
+    - name: install docker
+      apt:
+        name: docker.io
+        state: present
+      register: docker_install
+      retries: 3
+      delay: 5
+      until: docker_install is succeeded
 
-# strict parsing and normalization of URL for consistency and security
-# https://redmine.lighttpd.net/projects/lighttpd/wiki/Server_http-parseoptsDetails
-# (might need to explicitly set "url-path-2f-decode" = "disable"
-#  if a specific application is encoding URLs inside url-path)
-server.http-parseopts = (
-  "header-strict"           => "enable",# default
-  "host-strict"             => "enable",# default
-  "host-normalize"          => "enable",# default
-  "url-normalize-unreserved"=> "enable",# recommended highly
-  "url-normalize-required"  => "enable",# recommended
-  "url-ctrls-reject"        => "enable",# recommended
-  "url-path-2f-decode"      => "enable",# recommended highly (unless breaks app)
- #"url-path-2f-reject"      => "enable",
-  "url-path-dotseg-remove"  => "enable",# recommended highly (unless breaks app)
- #"url-path-dotseg-reject"  => "enable",
- #"url-query-20-plus"       => "enable",# consistency in query string
-)
+    - name: ensure docker status up and enabled
+      service:
+        name: docker
+        state: started
+        enabled: true
+      register: docker_service
+      failed_when: docker_service.failed and "not found" not in docker_service.msg
 
-index-file.names            = ( "index.php", "index.html" )
-url.access-deny             = ( "~", ".inc" )
-static-file.exclude-extensions = ( ".php", ".pl", ".fcgi" )
+    - name: Add Current User to docker group
+      user:
+        name: "{{ansible_user}}"
+        groups: docker
+        append: yes
+      ignore_errors: true # dont fail if user is already in group
 
-compress.cache-dir          = "/var/cache/lighttpd/compress/"
-compress.filetype           = ( "application/javascript", "text/css", "text/html", "text/plain" )
+    - name: create app directory
+      file:
+        path: "{{app_dir}}"
+        state: directory
+        owner: "{{ansible_user}}"
 
-# default listening port for IPv6 falls back to the IPv4 port
-## Use ipv6 if available
-#include_shell "/usr/share/lighttpd/use-ipv6.pl " + server.port
-include_shell "/usr/share/lighttpd/create-mime.conf.pl"
-include "/etc/lighttpd/conf-enabled/*.conf"
+    - name: copy Fast API Code
+      copy:
+        src: ./app/
+        dest: "{{app_dir}}"
+        owner: "{{ansible_user}}"
+        mode: '0755'
+      register: copy_result
+      failed_when: copy_result.failed and "No such file" in copy_result.msg
 
-#server.compat-module-load   = "disable"
-server.modules += (
-        "mod_compress",
-        "mod_dirlisting",
-        "mod_staticfile",
-)
+
+    - name: Build Docker File 
+      
+      command: docker build -t {{image_name}} .
+      args:
+        chdir: "{{app_dir}}"
+      register: build_result
+      retries: 2
+      delay: 4
+      until: build_result.rc ==0
+
+    - name: stop and remove any exiting container
+      shell: |
+        docker rm -f {{container_name}} || true
+      ignore_errors: true
+
+    - name: run container
+      command: >
+        docker run -d --name {{container_name}}
+        -p {{exposed_port}}:8000 {{image_name}}
+      register: run_result
+      failed_when: "'Error' in run_result.stderr or run_result.rc !=0"
+
+    - name: wait for fast api is available
+      uri:
+        url: "http://localhost:{{exposed_port}}"
+        status_code: 200
+      register: healtcheck
+      retries: 10
+      delay: 3
+      until: healtcheck.status == 200
