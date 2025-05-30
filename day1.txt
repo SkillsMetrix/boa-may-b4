@@ -1,44 +1,33 @@
-
-- name: vardemo
-  hosts: db
-  gather_facts: false
+---
+- name: Conditionally install packages using loop based on OS and RAM
+  hosts: all
   become: true
+  gather_facts: true
 
   vars:
-    username_firstname: 'amit kumar'
-    is_enabled: true
+    min_required_ram_mb: 1024
 
-    fruits:
-      - apple
-      - banana
-      - oranges
-    fruits_price:
-      apple: 50
-      banana: 40
-      oranges: 70
-    fruits_basket:
-      - name: john
-        fruits:
-          - apple
-          - oranges
-      - name: sam
-        fruits:
-          - banana
-          - apple
+    debian_packages:
+      - python3
+      - apache2
+
+    redhat_packages:
+      - python3
+      - httpd
+
+  pre_tasks:
+    - name: Debug OS and RAM
+      debug:
+        msg: "OS: {{ ansible_os_family }}, RAM: {{ ansible_memtotal_mb }} MB"
+
+    - name: Install packages on Debian/Ubuntu if RAM > 1GB
+      ansible.builtin.apt:
+        name: "{{ item }}"
+        state: present
+        update_cache: yes
+      loop: "{{ debian_packages }}"
+      when:
+        - ansible_os_family == "Debian"
+        - ansible_memtotal_mb > min_required_ram_mb
+
   
-  tasks:
-    - name: print String value
-      debug:
-        var: username_firstname
-    - name: print boolean value
-      debug:
-        var: is_enabled
-    - name: print list value
-      debug:
-        var: fruits
-    - name: print index value
-      debug:
-        var: fruits[1]
-    - name: print nested value
-      debug:
-        var: fruits_basket
